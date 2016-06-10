@@ -1,0 +1,146 @@
+#!/bin/bash
+# -*- sh -*-
+
+: << =cut
+
+=head1 NAME
+
+ip_ - Wildcard-plugin to monitor AMD graphics card sensors
+
+=head1 CONFIGURATION
+
+This plugin needs to be run as root for aticonfig to work.
+
+Example configuration follows.  Only the first stanza is needed:
+
+  [sensors_amd_*]
+    user root
+    env.aticonfig /usr/bin/aticonfig
+    env.display 0
+    env.xorgconf /etc/X11/xorg.conf
+
+  [sensors_amd_temp]
+
+  [sensors_amd_fan]
+
+=head2 ENVIRONMENT VARIABLES
+
+This plugin does not use environment variables.
+
+=head2 WILDCARD PLUGIN
+
+This is a wildcard plugin.  To monitor the temperatures or
+fans of AMD graphics cards.
+
+For example,
+
+  ln -s /usr/share/munin/plugins/sensors_amd_ \
+        /etc/munin/plugins/sensors_amd_temp
+
+will monitor the temperature of the graphics cards
+
+  ln -s /usr/share/munin/plugins/sensors_amd_ \
+        /etc/munin/plugins/sensors_amd_fan
+
+will monitor the fans of the graphics cards
+
+=head1 MAGIC MARKERS
+
+=head1 AUTHOR
+
+Maxime Rijnders
+
+=head1 LICENSE
+
+GPLv3
+
+=cut
+
+. $MUNIN_LIBDIR/plugins/plugin.sh
+
+TYPE=${0##*/sensors_amd_}
+
+case $TYPE in
+    temp)
+        ;;
+    fan)
+        ;;
+    *)
+        echo "Unknown sensor"
+        exit 1
+        ;;
+esac
+
+#
+# Set defaults
+#
+if [[ "$aticonfig" ]] ; then
+    aticonfig=/usr/bin/aticonfig
+fi
+
+if [[ "$display" ]] ; then
+    display=0
+fi
+
+if [[ "$xorgconf" ]] ; then
+    xorgconf=/etc/X11/xorg.conf
+fi
+
+#
+# Get the number of adapters
+#
+ADAPTERS=`$aticonfig --list-adapters | grep Supported | wc -l`
+
+#
+# Handle the config
+#
+if [[ "$1" == "config" ]]; then
+
+    title=$TYPE
+    echo "graph_title AMD GFX $title sensors"
+    echo 'graph_args --base 1000 --lower-limit 0'
+    if [[ "$TYPE" == "temp" ]] ; then
+        echo 'graph_vtitle Celsius'
+        for (( i = 0 ; i < $ADAPTERS ; i++ )) ; do
+            echo "temp$i.label GPU $i"
+        done
+    else
+        echo 'graph_vtitle % Rpm'
+        for (( i = 0 ; i < $ADAPTERS ; i++ )) ; do
+            echo "fan$i.label Fan $i"
+        done
+    fi
+    echo 'graph_category sensors'
+    exit 0
+fi
+
+#
+# Get the values
+#
+case $TYPE in
+    temp)
+        for (( i = 0 ; i < $ADAPTERS ; i++ )) ; do
+
+	    TEMPERATURE=`DISPLAY=:$display $aticonfig -i $xorgconf --odgt --adapter $i | grep "Sensor 0" | sed "s/.*Temperature - \(.*\) C/\1/"`
+
+	    echo "temp$i.value "$TEMPERATURE
+
+        done
+
+        ;;
+
+    fan)
+        for (( i = 0 ; i < $ADAPTERS ; i++ )) ; do
+
+            FANSPEED=`DISPLAY=:$display.$i $aticonfig --pplib-cmd "get fanspeed 0" | grep "Fan Speed" | sed "s/.*Speed: \(.*\)%/\1/"`
+
+            echo "fan$i.value "$FANSPEED
+
+	done
+	
+        ;;
+    *)
+        echo "Unknown sensor"
+        exit 1
+        ;;
+esac
