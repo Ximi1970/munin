@@ -141,7 +141,7 @@ case $TYPE in
     fan)
         for (( i = 0 ; i < $ADAPTERS ; i++ )) ; do
 
-            FANSPEED=`DISPLAY=:$x11display.$i $aticonfig --pplib-cmd "get fanspeed 0" | grep "Fan Speed" | sed "s/.*Speed: \(.*\)%/\1/"`
+            FANSPEED=`DISPLAY=:$x11display.$i $aticonfig -i $xorgconf --pplib-cmd "get fanspeed 0" | grep "Fan Speed" | sed "s/.*Speed: \(.*\)%/\1/"`
 
             echo "fan$i.value "$FANSPEED
 
