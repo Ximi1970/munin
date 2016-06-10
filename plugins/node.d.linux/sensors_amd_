@@ -93,7 +93,12 @@ fi
 #
 # Get the number of adapters
 #
-ADAPTERS=`$aticonfig --list-adapters | grep Supported | wc -l`
+ADAPTERS=`$aticonfig --list-adapters | wc -l`
+ADAPTERS=$((ADAPTERS-2))
+
+if [[ "$ADAPTERS" -lt 1 ]] ; then
+    exit 0
+fi
 
 #
 # Handle the config
