@@ -16,12 +16,16 @@ Example configuration follows.  Only the first stanza is needed:
   [sensors_amd_*]
     user root
     env.aticonfig /usr/bin/aticonfig
-    env.display 0
+    env.x11display 0
     env.xorgconf /etc/X11/xorg.conf
 
   [sensors_amd_temp]
+    env.x11display 8
+    env.xorgconf /etc/X11/xorg-fglrx.conf
 
   [sensors_amd_fan]
+    env.x11display 8
+    env.xorgconf /etc/X11/xorg-fglrx.conf
 
 =head2 ENVIRONMENT VARIABLES
 
@@ -52,7 +56,7 @@ Maxime Rijnders
 
 =head1 LICENSE
 
-GPLv3
+GPLv2
 
 =cut
 
@@ -74,15 +78,15 @@ esac
 #
 # Set defaults
 #
-if [[ "$aticonfig" ]] ; then
+if [[ -z "$aticonfig" ]] ; then
     aticonfig=/usr/bin/aticonfig
 fi
 
-if [[ "$display" ]] ; then
-    display=0
+if [[ -z "$x11display" ]] ; then
+        x11display=0
 fi
 
-if [[ "$xorgconf" ]] ; then
+if [[ -z "$xorgconf" ]] ; then
     xorgconf=/etc/X11/xorg.conf
 fi
 
@@ -121,7 +125,7 @@ case $TYPE in
     temp)
         for (( i = 0 ; i < $ADAPTERS ; i++ )) ; do
 
-	    TEMPERATURE=`DISPLAY=:$display $aticonfig -i $xorgconf --odgt --adapter $i | grep "Sensor 0" | sed "s/.*Temperature - \(.*\) C/\1/"`
+	    TEMPERATURE=`DISPLAY=:$x11display $aticonfig -i $xorgconf --odgt --adapter $i | grep "Sensor 0" | sed "s/.*Temperature - \(.*\) C/\1/"`
 
 	    echo "temp$i.value "$TEMPERATURE
 
@@ -132,7 +136,7 @@ case $TYPE in
     fan)
         for (( i = 0 ; i < $ADAPTERS ; i++ )) ; do
 
-            FANSPEED=`DISPLAY=:$display.$i $aticonfig --pplib-cmd "get fanspeed 0" | grep "Fan Speed" | sed "s/.*Speed: \(.*\)%/\1/"`
+            FANSPEED=`DISPLAY=:$x11display.$i $aticonfig --pplib-cmd "get fanspeed 0" | grep "Fan Speed" | sed "s/.*Speed: \(.*\)%/\1/"`
 
             echo "fan$i.value "$FANSPEED
 
