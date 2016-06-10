@@ -1,0 +1,136 @@
+#!/bin/bash
+# -*- sh -*-
+
+: << =cut
+
+=head1 NAME
+
+ip_ - Wildcard-plugin to monitor nVidia graphics card sensors
+
+=head1 CONFIGURATION
+
+Example configuration follows.  Only the first stanza is needed:
+
+  [sensors_nvidia_*]
+    user root
+    env.nvidiasmi /usr/bin/nvidia-smi
+
+  [sensors_nvidia_temp]
+    env.nvidiasmi /usr/bin/nvidia-smi
+
+  [sensors_nvidia_fan]
+    env.nvidiasmi /usr/bin/nvidia-smi
+
+=head2 ENVIRONMENT VARIABLES
+
+This plugin does not use environment variables.
+
+=head2 WILDCARD PLUGIN
+
+This is a wildcard plugin.  To monitor the temperatures or
+fans of nVidia graphics cards.
+
+For example,
+
+  ln -s /usr/share/munin/plugins/sensors_nvidia_ \
+        /etc/munin/plugins/sensors_nvidia_temp
+
+will monitor the temperature of the graphics cards
+
+  ln -s /usr/share/munin/plugins/sensors_nvidia_ \
+        /etc/munin/plugins/sensors_nvidia_fan
+
+will monitor the fans of the graphics cards
+
+=head1 MAGIC MARKERS
+
+=head1 AUTHOR
+
+Maxime Rijnders
+
+=head1 LICENSE
+
+GPLv2
+
+=cut
+
+. $MUNIN_LIBDIR/plugins/plugin.sh
+
+TYPE=${0##*/sensors_nvidia_}
+
+case $TYPE in
+    temp)
+        ;;
+    fan)
+        ;;
+    *)
+        echo "Unknown sensor"
+        exit 1
+        ;;
+esac
+
+#
+# Set defaults
+#
+if [[ -z "$nvidiasmi" ]] ; then
+    nvidiasmi=/usr/bin/nvidia-smi
+fi
+
+#
+# Get the number of adapters
+#
+ADAPTERS=`$nvidiasmi -L | wc -l`
+
+#
+# Handle the config
+#
+if [[ "$1" == "config" ]]; then
+
+    title=$TYPE
+    echo "graph_title nVidia GFX $title sensors"
+    echo 'graph_args --base 1000 --lower-limit 0'
+    if [[ "$TYPE" == "temp" ]] ; then
+        echo 'graph_vtitle Celsius'
+        for (( i = 0 ; i < $ADAPTERS ; i++ )) ; do
+            echo "temp$i.label GPU $i"
+        done
+    else
+        echo 'graph_vtitle % Rpm'
+        for (( i = 0 ; i < $ADAPTERS ; i++ )) ; do
+            echo "fan$i.label Fan $i"
+        done
+    fi
+    echo 'graph_category sensors'
+    exit 0
+fi
+
+#
+# Get the values
+#
+case $TYPE in
+    temp)
+        for (( i = 0 ; i < $ADAPTERS ; i++ )) ; do
+
+	    TEMPERATURE=`$nvidiasmi -i $i --query-gpu=temperature.gpu --format=csv,noheader`
+
+	    echo "temp$i.value "$TEMPERATURE
+
+        done
+
+        ;;
+
+    fan)
+        for (( i = 0 ; i < $ADAPTERS ; i++ )) ; do
+
+            FANSPEED=`$nvidiasmi -i $i --query-gpu=fan.speed --format=csv,noheader | cut -d ' ' -f 1`
+
+            echo "fan$i.value "$FANSPEED
+
+	done
+	
+        ;;
+    *)
+        echo "Unknown sensor"
+        exit 1
+        ;;
+esac
